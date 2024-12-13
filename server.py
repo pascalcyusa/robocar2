@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 import RPi.GPIO as GPIO
 import time
 
