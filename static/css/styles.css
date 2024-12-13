@@ -26,6 +26,14 @@ button:hover {
     background-color: #0056b3;
 }
 
+input[type="number"] {
+    font-size: 18px;
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
 h1 {
     color: #333;
 }

@@ -1,9 +1,5 @@
-from flask import Flask, render_template, request
 import RPi.GPIO as GPIO
 import time
-import requests
-
-app = Flask(__name__, static_folder="static", template_folder="templates")
 
 # Setup GPIO pins
 GPIO.setmode(GPIO.BOARD)
@@ -25,11 +21,6 @@ left_pwm_fwd.start(0)
 left_pwm_bwd.start(0)
 right_pwm_fwd.start(0)
 right_pwm_bwd.start(0)
-
-# Global variable to store target speed
-target_speed = 0
-delay = 0
-partner_ip = "http://<PARTNER_IP>:5001"  # Replace with the partner's IP address
 
 # Function to control left motor
 def control_left_motor(speed, direction):
@@ -56,67 +47,36 @@ def read_limit_switches():
     return switch1, switch2
 
 # Function to adjust speed based on limit switches
-def adjust_speed():
+def adjust_speed(target_speed):
     switch1, switch2 = read_limit_switches()
     if switch1 and switch2:
         # Both switches are pressed, tube is stable
         return target_speed
     elif switch1 and not switch2:
         # Tube is tilting towards the partner
-        requests.get(f"{partner_ip}/target/{target_speed + 10}")
         return target_speed - 10
     elif not switch1 and switch2:
         # Tube is tilting towards us
-        requests.get(f"{partner_ip}/target/{target_speed - 10}")
         return target_speed + 10
     else:
         # Tube is not detected
         return 0
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/start/<int:delay_seconds>')
-def start(delay_seconds):
-    global delay
-    delay = delay_seconds
-    time.sleep(delay)
-    control_left_motor(target_speed, 1)
-    control_right_motor(target_speed, 1)
-    return "Started!"
-
-@app.route('/stop')
-def stop():
-    control_left_motor(0, 1)
-    control_right_motor(0, 1)
-    return "Stopped!"
-
-@app.route('/target/<int:speed>')
-def set_target_speed(speed):
-    global target_speed
-    target_speed = speed
-    with open('target_speed.txt', 'w') as file:
-        file.write(str(target_speed))
-    return f"Target speed set to {target_speed}"
-
-@app.route('/get-target-speed')
-def get_target_speed():
+def read_target_speed():
     with open('target_speed.txt', 'r') as file:
         speed = file.read()
-    return speed
+    return int(speed)
 
-@app.route('/shutdown')
-def shutdown():
-    left_pwm_fwd.stop()
-    left_pwm_bwd.stop()
-    right_pwm_fwd.stop()
-    right_pwm_bwd.stop()
-    GPIO.cleanup()
-    return "System shutdown!"
+def control_loop():
+    while True:
+        target_speed = read_target_speed()
+        adjusted_speed = adjust_speed(target_speed)
+        control_left_motor(adjusted_speed, 1)
+        control_right_motor(adjusted_speed, 1)
+        time.sleep(1)
 
 if __name__ == '__main__':
     try:
-        app.run(host='0.0.0.0', port=5001)
+        control_loop()
     except KeyboardInterrupt:
         GPIO.cleanup()
