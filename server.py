@@ -12,8 +12,8 @@ GPIO.setup(12, GPIO.OUT)  # Left Motor Forward
 GPIO.setup(32, GPIO.OUT)  # Left Motor Backward
 GPIO.setup(33, GPIO.OUT)  # Right Motor Forward
 GPIO.setup(35, GPIO.OUT)  # Right Motor Backward
-GPIO.setup(36, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Limit Switch 1
-GPIO.setup(38, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # Limit Switch 2
+GPIO.setup(36, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Limit Switch 1
+GPIO.setup(38, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Limit Switch 2
 
 # Set up PWM for motor speed control
 left_pwm_fwd = GPIO.PWM(12, 500)
