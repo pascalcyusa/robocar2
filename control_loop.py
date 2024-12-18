@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import os
 
 # Setup GPIO pins
 GPIO.setmode(GPIO.BOARD)
@@ -22,59 +23,61 @@ left_pwm_bwd.start(0)
 right_pwm_fwd.start(0)
 right_pwm_bwd.start(0)
 
-# Function to control left motor
-def control_left_motor(speed, direction):
-    if direction == 1:  # Forward
-        left_pwm_bwd.ChangeDutyCycle(0)
-        left_pwm_fwd.ChangeDutyCycle(speed)
-    elif direction == -1:  # Backward
-        left_pwm_fwd.ChangeDutyCycle(0)
-        left_pwm_bwd.ChangeDutyCycle(speed)
-
-# Function to control right motor
-def control_right_motor(speed, direction):
-    if direction == 1:  # Forward
-        right_pwm_bwd.ChangeDutyCycle(0)
-        right_pwm_fwd.ChangeDutyCycle(speed)
-    elif direction == -1:  # Backward
-        right_pwm_fwd.ChangeDutyCycle(0)
-        right_pwm_bwd.ChangeDutyCycle(speed)
-
-# Function to read limit switches
-def read_limit_switches():
-    switch1 = GPIO.input(36)
-    switch2 = GPIO.input(38)
-    return switch1, switch2
-
-# Function to adjust speed based on limit switches
-def adjust_speed(target_speed):
-    switch1, switch2 = read_limit_switches()
-    if switch1 and switch2:
-        # Both switches are pressed, tube is stable
-        return target_speed
-    elif switch1 and not switch2:
-        # Tube is tilting towards the partner
-        return target_speed - 10
-    elif not switch1 and switch2:
-        # Tube is tilting towards us
-        return target_speed + 10
-    else:
-        # Tube is not detected
-        return 0
-
+# Function to read target speed from file
 def read_target_speed():
+    if not os.path.exists('target_speed.txt'):
+        return None  # File does not exist
     with open('target_speed.txt', 'r') as file:
         speed = file.read()
     return int(speed)
 
+# Function to control left motor (only forward)
+def control_left_motor(speed):
+    left_pwm_bwd.ChangeDutyCycle(0)  # Ensure backward PWM is off
+    left_pwm_fwd.ChangeDutyCycle(speed)  # Set forward PWM to desired speed
+
+# Function to control right motor (only forward)
+def control_right_motor(speed):
+    right_pwm_bwd.ChangeDutyCycle(0)  # Ensure backward PWM is off
+    right_pwm_fwd.ChangeDutyCycle(speed)  # Set forward PWM to desired speed
+
+
+# Function to adjust speed based on limit switches
+def adjust_speed(target_speed):
+    switch1 = GPIO.input(36)
+    switch2 = GPIO.input(38)
+
+    if not switch1 and not switch2:
+        print("Both limit switches inactive. Stopping motors for 5 seconds.")
+        control_left_motor(0)
+        control_right_motor(0)
+        time.sleep(2)
+        return 0
+    elif switch1 and switch2:
+        print(f"Both limit switches active. Moving forward with target speed: {target_speed}")
+        return target_speed
+    elif switch1 and not switch2:
+        print(f"Limit switch 1 active. Moving forward with target speed: {target_speed - 10}")
+        return target_speed - 10
+    elif not switch1 and switch2:
+        print(f"Limit switch 2 active. Moving forward with target speed: {target_speed +  10}")
+        return target_speed + 10
+
+# Main control loop
 def control_loop():
+    print("Starting control loop...")
     while True:
         target_speed = read_target_speed()
+        
+        if target_speed is None or target_speed <= 0:
+            print("Waiting for initial input speed...")
+            time.sleep(1)  # Avoid busy waiting
+            continue
+        
+        print(f"Target speed received: {target_speed}")
         adjusted_speed = adjust_speed(target_speed)
-        # Add debug print statements here
-        print("Calling adjust_speed() function...")
-        control_left_motor(adjusted_speed, 1)
-        control_right_motor(adjusted_speed, 1)
+        control_left_motor(adjusted_speed)
+        control_right_motor(adjusted_speed)
         time.sleep(1)
 
 if __name__ == '__main__':
