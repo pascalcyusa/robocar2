@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 import os
+import threading
 
 # Setup GPIO pins
 GPIO.setmode(GPIO.BOARD)
@@ -24,6 +25,7 @@ right_pwm_fwd.start(0)
 # Global variables
 target_speed = 0
 is_running = False  # Indicates if the robot is allowed to move
+thread_lock = threading.Lock()
 
 # Function to read target speed from file
 
@@ -74,10 +76,11 @@ def control_loop():
     print("Starting control loop...")
     while True:
         # Wait until is_running is set to True
-        if not is_running:
-            print("Robot paused. Waiting to start...")
-            time.sleep(1)
-            continue
+        with thread_lock:
+            if not is_running:
+                print("Robot paused. Waiting to start...")
+                time.sleep(1)
+                continue
 
         # Read the target speed
         target_speed = read_target_speed()
@@ -99,6 +102,10 @@ if __name__ == '__main__':
     try:
         control_loop()
     except KeyboardInterrupt:
+        left_pwm_fwd.stop()
+        right_pwm_fwd.stop()
+        GPIO.cleanup()
+    finally:
         left_pwm_fwd.stop()
         right_pwm_fwd.stop()
         GPIO.cleanup()

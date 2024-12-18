@@ -24,9 +24,9 @@ right_pwm_fwd.start(0)
 
 # Global Variables
 target_speed = 0
-# Replace with your partner's robot IP
 partner_ip = "http://10.243.83.139:5000"
 is_running = False
+thread_lock = threading.Lock()
 
 # Control Motor Function
 
@@ -46,18 +46,21 @@ def index():
 @app.route('/start/<int:delay_seconds>')
 def start(delay_seconds):
     global is_running
-    if is_running:
-        return "no"
-    is_running = False  # Explicitly set to False to prevent premature start
+    with thread_lock:
+        if is_running:
+            return "no"
+        is_running = False  # Explicitly set to False to prevent premature start
     time.sleep(delay_seconds)
-    is_running = True  # Allow control loop to run
+    with thread_lock:
+        is_running = True  # Allow control loop to run
     return "ok"
 
 
 @app.route('/target/<int:speed>')
 def set_target(speed):
     global target_speed
-    target_speed = speed
+    with thread_lock:
+        target_speed = speed
     control_motors(speed)
     return "ok"
 
@@ -66,9 +69,9 @@ def set_target(speed):
 
 def send_target_to_partner(speed):
     try:
-        response = requests.get(f"{partner_ip}/target/{speed}")
+        response = requests.get(f"{partner_ip}/target/{speed}", timeout=5)
         print(f"Partner Response: {response.text}")
-    except Exception as e:
+    except requests.RequestException as e:
         print(f"Error communicating with partner: {e}")
 
 # Main Control Loop
@@ -102,6 +105,10 @@ if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0', port=5001)
     except KeyboardInterrupt:
+        left_pwm_fwd.stop()
+        right_pwm_fwd.stop()
+        GPIO.cleanup()
+    finally:
         left_pwm_fwd.stop()
         right_pwm_fwd.stop()
         GPIO.cleanup()
