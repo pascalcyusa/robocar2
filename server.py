@@ -35,8 +35,12 @@ partner_ip = "http://10.243.83.139:5000"  # Replace with the partner's IP addres
 
 # Function to control left motor (only forward)
 def control_left_motor(speed):
+    # Apply dynamic calibration offset (proportional to speed)
+    calibration_factor = 0.1  # Adjust this factor as needed (10%)
+    calibrated_speed = max(0, min(speed * (1 - calibration_factor), 100))  # Clamp speed to valid range
     left_pwm_bwd.ChangeDutyCycle(0)  # Ensure backward PWM is off
-    left_pwm_fwd.ChangeDutyCycle(speed)  # Set forward PWM to desired speed
+    left_pwm_fwd.ChangeDutyCycle(calibrated_speed)  # Set calibrated forward speed
+
 
 # Function to control right motor (only forward)
 def control_right_motor(speed):
