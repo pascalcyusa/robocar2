@@ -2,6 +2,8 @@
 robocar/bin/
 robocar/lib/
 robocar/pyvenv.cfg
+Rpi/
+Rpi/GPIO/
 
 
 # Ignore .DS_Store files
