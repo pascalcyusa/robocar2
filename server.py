@@ -14,6 +14,7 @@ GPIO.setup(12, GPIO.OUT)  # Left Motor Forward
 GPIO.setup(32, GPIO.OUT)  # Left Motor Backward
 GPIO.setup(33, GPIO.OUT)  # Right Motor Forward
 GPIO.setup(35, GPIO.OUT)  # Right Motor Backward
+
 GPIO.setup(36, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Limit Switch 1
 GPIO.setup(38, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Limit Switch 2
 
@@ -31,7 +32,7 @@ right_pwm_bwd.start(0)
 # Global variable to store target speed
 target_speed = 0
 delay = 0
-partner_ip = "http://10.243.83.139:5000"  # Replace with the partner's IP address
+partner_ip = "http://10.243.82.129:5000"  # Replace with the partner's IP address
 
 # Function to control left motor
 def control_left_motor(speed, direction):
@@ -63,20 +64,31 @@ def read_limit_switches():
 def adjust_speed():
     switch1, switch2 = read_limit_switches()
     print(f"Adjusting speed - Switch1: {switch1}, Switch2: {switch2}")
-    if switch1 and switch2:
-        # Both switches are pressed, tube is stable
+    
+    if not switch1 and not switch2:
+        # Both switches are inactive: stop the motors and wait
+        print("Both limit switches inactive. Stopping motors for 5 seconds.")
+        control_left_motor(0, 1)  # Stop left motor
+        control_right_motor(0, 1)  # Stop right motor
+        time.sleep(5)  # Wait for 5 seconds
+        return 0  # Maintain stopped state
+    
+    elif switch1 and switch2:
+        # Both switches pressed: tube stable
         return target_speed
+    
     elif switch1 and not switch2:
-        # Tube is tilting towards the partner
+        # Tube tilting towards the partner
+        print("Tilting towards partner. Adjusting speed.")
         requests.get(f"{partner_ip}/target/{target_speed + 10}")
         return target_speed - 10
+    
     elif not switch1 and switch2:
-        # Tube is tilting towards us
+        # Tube tilting towards us
+        print("Tilting towards us. Adjusting speed.")
         requests.get(f"{partner_ip}/target/{target_speed - 10}")
         return target_speed + 10
-    else:
-        # Tube is not detected
-        return 0
+
 
 @app.route('/')
 def index():

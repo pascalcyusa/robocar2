@@ -71,6 +71,8 @@ def control_loop():
     while True:
         target_speed = read_target_speed()
         adjusted_speed = adjust_speed(target_speed)
+        # Add debug print statements here
+        print("Calling adjust_speed() function...")
         control_left_motor(adjusted_speed, 1)
         control_right_motor(adjusted_speed, 1)
         time.sleep(1)
