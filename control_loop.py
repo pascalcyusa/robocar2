@@ -19,73 +19,86 @@ right_pwm_fwd = GPIO.PWM(33, 500)
 right_pwm_bwd = GPIO.PWM(35, 500)
 
 left_pwm_fwd.start(0)
-left_pwm_bwd.start(0)
 right_pwm_fwd.start(0)
-right_pwm_bwd.start(0)
+
+# Global variables
+target_speed = 0
+is_running = False  # Indicates if the robot is allowed to move
 
 # Function to read target speed from file
+
+
 def read_target_speed():
     if not os.path.exists('target_speed.txt'):
         return None  # File does not exist
     with open('target_speed.txt', 'r') as file:
         speed = file.read()
-    return int(speed)
+        return int(speed) if speed.isdigit() else None
 
 # Function to control left motor (only forward)
-def control_left_motor(speed):
-    # Apply dynamic calibration offset (proportional to speed)
-    calibration_factor = 0.1  # Adjust this factor as needed (10%)
-    calibrated_speed = max(0, min(speed * (1 - calibration_factor), 100))  # Clamp speed to valid range
-    left_pwm_bwd.ChangeDutyCycle(0)  # Ensure backward PWM is off
-    left_pwm_fwd.ChangeDutyCycle(calibrated_speed)  # Set calibrated forward speed
 
+
+def control_left_motor(speed):
+    calibrated_speed = max(0, min(speed * 0.9, 100))  # Apply a 10% calibration
+    left_pwm_fwd.ChangeDutyCycle(calibrated_speed)
 
 # Function to control right motor (only forward)
-def control_right_motor(speed):
-    right_pwm_bwd.ChangeDutyCycle(0)  # Ensure backward PWM is off
-    right_pwm_fwd.ChangeDutyCycle(speed)  # Set forward PWM to desired speed
 
+
+def control_right_motor(speed):
+    right_pwm_fwd.ChangeDutyCycle(speed)
 
 # Function to adjust speed based on limit switches
+
+
 def adjust_speed(target_speed):
     switch1 = GPIO.input(36)
     switch2 = GPIO.input(38)
 
     if not switch1 and not switch2:
-        print("Both limit switches inactive. Stopping motors for 5 seconds.")
-        control_left_motor(0)
-        control_right_motor(0)
-        time.sleep(2)
-        return 0
+        print("Both limit switches inactive. Stopping motors for safety.")
+        return 0  # Stop motors completely
     elif switch1 and switch2:
-        print(f"Both limit switches active. Moving forward with target speed: {target_speed}")
         return target_speed
     elif switch1 and not switch2:
-        print(f"Limit switch 1 active. Moving forward with target speed: {target_speed - 10}")
-        return target_speed - 10
+        return max(target_speed - 10, 0)  # Reduce speed
     elif not switch1 and switch2:
-        print(f"Limit switch 2 active. Moving forward with target speed: {target_speed +  10}")
-        return target_speed + 10
+        return min(target_speed + 10, 100)  # Increase speed
 
 # Main control loop
+
+
 def control_loop():
+    global is_running, target_speed
+
     print("Starting control loop...")
     while True:
-        target_speed = read_target_speed()
-        
-        if target_speed is None or target_speed <= 0:
-            print("Waiting for initial input speed...")
-            time.sleep(1)  # Avoid busy waiting
+        # Wait until is_running is set to True
+        if not is_running:
+            print("Robot paused. Waiting to start...")
+            time.sleep(1)
             continue
-        
-        print(f"Target speed received: {target_speed}")
+
+        # Read the target speed
+        target_speed = read_target_speed()
+        if target_speed is None or target_speed <= 0:
+            print("Invalid or missing target speed. Waiting for valid input...")
+            time.sleep(1)
+            continue
+
+        print(f"Target speed: {target_speed}")
         adjusted_speed = adjust_speed(target_speed)
+
+        # Control motors based on adjusted speed
         control_left_motor(adjusted_speed)
         control_right_motor(adjusted_speed)
-        time.sleep(1)
+        time.sleep(0.1)  # Run at a rate of 10 Hz
+
 
 if __name__ == '__main__':
     try:
         control_loop()
     except KeyboardInterrupt:
+        left_pwm_fwd.stop()
+        right_pwm_fwd.stop()
         GPIO.cleanup()

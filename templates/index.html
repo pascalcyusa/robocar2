@@ -11,9 +11,16 @@
 <body>
     <div class="container">
         <h1>Motor Control Interface</h1>
-        <input type="number" id="speedInput" placeholder="Enter initial speed">
+        <!-- Input for Speed -->
+        <input type="number" id="speedInput" placeholder="Enter initial speed (1-1000 mm/s)">
+        <!-- Input for Delay -->
+        <input type="number" id="delayInput" placeholder="Enter delay (1-10 seconds)">
+
+        <!-- Buttons -->
         <button onclick="startRobot()">Start</button>
         <button onclick="stopRobot()">Stop</button>
+
+        <!-- Message Display -->
         <p id="message" style="color: green; font-size: 18px; margin-top: 20px;"></p>
     </div>
 

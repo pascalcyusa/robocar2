@@ -1,69 +1,43 @@
-function displayMessage(msg, color = 'green') {
-    const messageElement = document.getElementById('message');
-    messageElement.textContent = msg;
-    messageElement.style.color = color;
-}
-
 function startRobot() {
     let speedInput = document.getElementById('speedInput').value;
+    let delayInput = document.getElementById('delayInput').value;
     let baseUrl = 'http://10.243.86.94:5001'; // Base URL of your Flask server
 
-    if (!speedInput) {
-        displayMessage("Please enter a valid speed before starting the robot.", 'red');
+    // Input Validation
+    if (!speedInput || speedInput < 1 || speedInput > 1000) {
+        displayMessage("Please enter a valid speed (1-1000 mm/s).", 'red');
         return;
     }
 
-    displayMessage("Starting the robot...", 'blue');
+    if (!delayInput || delayInput < 1 || delayInput > 10) {
+        displayMessage("Please enter a valid delay (1-10 seconds).", 'red');
+        return;
+    }
 
-    // Set the initial speed
+    displayMessage("Setting speed and starting the robot...", 'blue');
+
+    // Set the target speed
     fetch(`${baseUrl}/target/${speedInput}`)
         .then(response => {
-            if (response.ok) {
-                return response.text();
-            }
-            throw new Error('Request failed');
+            if (response.ok) return response.text();
+            throw new Error('Failed to set speed');
         })
         .then(data => {
-            console.log('Server response:', data);
-            displayMessage("Speed set successfully. Starting the robot...");
-            // Start the robot with a delay of 2 seconds
-            return fetch(`${baseUrl}/start/2`);
+            console.log('Speed Response:', data);
+            displayMessage("Speed set successfully. Starting the robot...", 'blue');
+            // Start the robot with the given delay
+            return fetch(`${baseUrl}/start/${delayInput}`);
         })
         .then(response => {
-            if (response.ok) {
-                return response.text();
-            }
-            throw new Error('Request failed');
+            if (response.ok) return response.text();
+            throw new Error('Failed to start the robot');
         })
         .then(data => {
-            console.log('Server response:', data);
+            console.log('Start Response:', data);
             displayMessage("Robot started successfully!", 'green');
         })
         .catch(error => {
             console.error('Error:', error);
-            displayMessage("Failed to start the robot. Please try again.", 'red');
-        });
-}
-
-function stopRobot() {
-    let baseUrl = 'http://10.243.86.94:5001'; // Base URL of your Flask server
-
-    displayMessage("Stopping the robot...", 'blue');
-
-    // Stop the robot
-    fetch(`${baseUrl}/stop`)
-        .then(response => {
-            if (response.ok) {
-                return response.text();
-            }
-            throw new Error('Request failed');
-        })
-        .then(data => {
-            console.log('Server response:', data);
-            displayMessage("Robot stopped successfully!", 'green');
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            displayMessage("Failed to stop the robot. Please try again.", 'red');
+            displayMessage("Error starting the robot. Please try again.", 'red');
         });
 }
