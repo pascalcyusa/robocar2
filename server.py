@@ -84,6 +84,11 @@ def shutdown():
     left_pwm_bwd.stop()
     right_pwm_fwd.stop()
     right_pwm_bwd.stop()
+
+    # Clear the target speed file
+    with open('target_speed.txt', 'w') as file:
+        file.write("")  # Write an empty string to clear the file
+        
     GPIO.cleanup()
     return "System shutdown!"
 
