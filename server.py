@@ -2,8 +2,10 @@ from flask import Flask, render_template, request
 import RPi.GPIO as GPIO
 import time
 import requests
+import logging
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+
 
 # Setup GPIO pins
 GPIO.setmode(GPIO.BOARD)
@@ -29,7 +31,7 @@ right_pwm_bwd.start(0)
 # Global variable to store target speed
 target_speed = 0
 delay = 0
-partner_ip = "http://<PARTNER_IP>:5001"  # Replace with the partner's IP address
+partner_ip = "http://10.243.83.139:5000"  # Replace with the partner's IP address
 
 # Function to control left motor
 def control_left_motor(speed, direction):
@@ -53,11 +55,14 @@ def control_right_motor(speed, direction):
 def read_limit_switches():
     switch1 = GPIO.input(36)
     switch2 = GPIO.input(38)
+    print(f"Switch1: {switch1}, Switch2: {switch2}")  # Debugging
     return switch1, switch2
+
 
 # Function to adjust speed based on limit switches
 def adjust_speed():
     switch1, switch2 = read_limit_switches()
+    print(f"Adjusting speed - Switch1: {switch1}, Switch2: {switch2}")
     if switch1 and switch2:
         # Both switches are pressed, tube is stable
         return target_speed
